@@ -1,13 +1,25 @@
 """
     Python Editor: https://python.mblock.cc/
-    Needs mLink2 installed on the computer: https://www.mblock.cc/en/download/mlink/
-    Works in upload mode only, at least for me
+        Needs mLink2 installed on the computer: https://www.mblock.cc/en/download/mlink/
+        Works in upload mode only, which uses MicroPython.
+            MicroPython supports limited number of libraries: https://docs.micropython.org/en/latest/library/index.html
+        Live mode uses Python 3 but devices only run code when connected to the computer
     Author: Prabhjot Singh
 """
 
 
-import cyberpi  # https://education.makeblock.com/help/mblock-python-editor-python-api-documentation-for-cyberpi/
+import time
 import mbot2    # https://education.makeblock.com/help/mblock-python-editor-apis-for-extension-boards/
+import cyberpi  # https://education.makeblock.com/help/mblock-python-editor-python-api-documentation-for-cyberpi/
+# Sensors: https://education.makeblock.com/help/mblock-python-editor-apis-for-mbuild-modules/
+
+# MicroPython libraries
+# https://makeblock-micropython-api.readthedocs.io/en/latest/public_library/Third-party-libraries/urequests.html
+import urequests as requests # only works with http requests, not https (OSError: [Errno 12] ENOMEM)
+
+
+WIFI_SSID = "your_wifi_ssid"
+WIFI_PASSWORD = "your_wifi_password"
 
 
 class mbot_neo:
@@ -15,6 +27,17 @@ class mbot_neo:
         self.speed = 50     # RPM
         self.time = 1.0     # For movement (seconds)
         self.distance = 16  # For movement (cm)
+
+        # Connect to WiFi
+        self.print("Connecting to WiFi...")
+        while not cyberpi.wifi.is_connect():
+            cyberpi.wifi.connect(WIFI_SSID, WIFI_PASSWORD)
+            if cyberpi.wifi.is_connect():
+                cyberpi.audio.play("level-up")
+                break
+            time.sleep(1)
+            self.print("Unable to connect to WiFi. Retrying...")
+        self.print("Connected to WiFi")
 
 
     """
@@ -44,8 +67,11 @@ class mbot_neo:
         self.distance = distance
 
 
-    def print_line(self, text):
-        cyberpi.display.clear()
+    # Prints text on the CyberPi screen
+    # Clears the screen by default
+    def print(self, text, clear = True, center = False):
+        if clear:
+            cyberpi.display.clear()
         cyberpi.console.println(text)
 
 
@@ -77,34 +103,34 @@ class mbot_neo:
         
         if direction == "forward":
             if mode == "time":
-                self.print_line("Moving forward at " + str(speed) + " RPM for " + str(time) + " seconds")
+                self.print("Moving forward at " + str(speed) + " RPM for " + str(time) + " seconds")
                 mbot2.forward(speed, time)
             else:
-                self.print_line("Moving forward at " + str(speed) + " RPM for " + str(distance) + " cm")
+                self.print("Moving forward at " + str(speed) + " RPM for " + str(distance) + " cm")
                 mbot2.straight(distance, speed)
         elif direction == "backward":
             if mode == "time":
-                self.print_line("Moving backward at " + str(speed) + " RPM for " + str(time) + " seconds")
+                self.print("Moving backward at " + str(speed) + " RPM for " + str(time) + " seconds")
                 mbot2.backward(speed, time)
             else:
-                self.print_line("Moving backward at " + str(speed) + " RPM for " + str(distance) + " cm")
+                self.print("Moving backward at " + str(speed) + " RPM for " + str(distance) + " cm")
                 distance = -1 * distance
                 mbot2.straight(distance, speed)
         elif direction == "left":
             if mode == "time":
-                self.print_line("Turning left at " + str(speed) + " RPM for " + str(time) + " seconds")
+                self.print("Turning left at " + str(speed) + " RPM for " + str(time) + " seconds")
                 mbot2.turn_left(speed, time)
             else:
                 # Left means turn counter-clockwise
-                self.print_line("Turning left at " + str(speed) + " RPM for " + str(distance) + " degrees")
+                self.print("Turning left at " + str(speed) + " RPM for " + str(distance) + " degrees")
                 distance = -1 * distance
                 mbot2.turn(distance, speed)
         elif direction == "right":
             if mode == "time":
-                self.print_line("Turning right at " + str(speed) + " RPM for " + str(time) + " seconds")
+                self.print("Turning right at " + str(speed) + " RPM for " + str(time) + " seconds")
                 mbot2.turn_right(speed, time)
             else:
-                self.print_line("Turning right at " + str(speed) + " RPM for " + str(distance) + " degrees")
+                self.print("Turning right at " + str(speed) + " RPM for " + str(distance) + " degrees")
                 mbot2.turn(distance, speed)
 
 
@@ -132,8 +158,9 @@ class mbot_neo:
         mbot2.stop()
 
 
+# Test all movement functions
 @cyberpi.event.is_press("b")
-def actions():
+def move_actions():
     mbot.move_forward()
     mbot.turn_left()
     mbot.turn_right()
@@ -147,5 +174,18 @@ def actions():
     mbot.turn_right(angle=90)
     mbot.move_backward(distance=32)
 
+
+@cyberpi.event.is_press("a")
+def http_request():
+    mbot.print("Sending HTTP request...")
+    response = requests.get("http://google.com")
+    mbot.print(" ", False)
+    mbot.print("Status code: " + str(response.status_code), False)
+    if response.status_code == 200:
+        mbot.print("Success!", False)
+
+
 mbot = mbot_neo()
-mbot.print_line("Press B (play) button to start")
+mbot.print("Press A to test HTTP request")
+mbot.print(" ", False)
+mbot.print("Press B to test movement", False)
