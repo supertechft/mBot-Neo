@@ -28,17 +28,6 @@ class mbot_neo:
         self.time = 1.0     # For movement (seconds)
         self.distance = 16  # For movement (cm)
 
-        # Connect to WiFi
-        self.print("Connecting to WiFi...")
-        while not cyberpi.wifi.is_connect():
-            cyberpi.wifi.connect(WIFI_SSID, WIFI_PASSWORD)
-            if cyberpi.wifi.is_connect():
-                cyberpi.audio.play("level-up")
-                break
-            time.sleep(1)
-            self.print("Unable to connect to WiFi. Retrying...")
-        self.print("Connected to WiFi")
-
 
     """
         Setters
@@ -173,10 +162,24 @@ def move_actions():
     mbot.turn_left(angle=90)
     mbot.turn_right(angle=90)
     mbot.move_backward(distance=32)
+    mbot.print("Done! :)")
 
 
+# Test WiFi functionality / HTTP request
 @cyberpi.event.is_press("a")
 def http_request():
+    # Connect to WiFi
+    mbot.print("Connecting to WiFi...")
+    while not cyberpi.wifi.is_connect():
+        cyberpi.wifi.connect(WIFI_SSID, WIFI_PASSWORD)
+        if cyberpi.wifi.is_connect():
+            cyberpi.audio.play("level-up")
+            break
+        time.sleep(1)
+        mbot.print("Unable to connect to WiFi. Retrying...")
+    mbot.print("Connected to WiFi")
+    
+    # Send HTTP request
     mbot.print("Sending HTTP request...")
     response = requests.get("http://google.com")
     mbot.print(" ", False)
